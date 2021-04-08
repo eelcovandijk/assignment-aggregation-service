@@ -16,6 +16,11 @@ public class TrackImpl implements Track {
     }
 
     @Override
+    public String getItem() {
+        return item;
+    }
+
+    @Override
     public JsonObject toJson() {
         return new JsonObject().put(item, status);
     }

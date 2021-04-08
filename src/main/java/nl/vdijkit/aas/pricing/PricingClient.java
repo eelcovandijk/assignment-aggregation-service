@@ -11,6 +11,7 @@ import nl.vdijkit.aas.domain.Pricing;
 import nl.vdijkit.aas.domain.Shipment;
 import nl.vdijkit.aas.domain.TimedOutItem;
 import nl.vdijkit.aas.domain.UnavailableItem;
+import nl.vdijkit.aas.shipment.ShipmentClient;
 import org.jboss.logging.Logger;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -23,12 +24,7 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class PricingClient {
     private static final Logger LOGGER = Logger.getLogger(PricingClient.class);
-    private static final Function<HttpResponse<Buffer>, List<Pricing>> HTTP_RESPONSE_TRACK_FUNCTION = httpResponse -> {
-        if (httpResponse.statusCode() == 200) {
-            return new PricingMapper(httpResponse.bodyAsJsonObject()).mapResponse();
-        }
-        return List.of(new UnavailableItem());
-    };
+
     private final WebClient client;
 
     @Inject
@@ -41,9 +37,18 @@ public class PricingClient {
         return client.get("/pricing")
                 .addQueryParam("q", String.join(",", items))
                 .send()
-                .map(HTTP_RESPONSE_TRACK_FUNCTION)
+                .map(mapResponse(items))
                 .ifNoItem().after(Duration.ofMillis(5000))
-                .recoverWithItem(List.of(new TimedOutItem()));
+                .recoverWithItem(items.stream().map(TimedOutItem::new).collect(Collectors.toList()));
+    }
+
+    private Function<HttpResponse<Buffer>, List<Pricing>> mapResponse(List<String> requestedItems) {
+        return bufferHttpResponse -> {
+            if (bufferHttpResponse.statusCode() == 200) {
+                return new PricingMapper(bufferHttpResponse.bodyAsJsonObject()).mapResponse();
+            }
+            return requestedItems.stream().map(UnavailableItem::new).collect(Collectors.toList());
+        };
     }
 
     private static class PricingMapper {

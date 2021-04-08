@@ -7,7 +7,6 @@ import io.vertx.mutiny.core.Vertx;
 import io.vertx.mutiny.core.buffer.Buffer;
 import io.vertx.mutiny.ext.web.client.HttpResponse;
 import io.vertx.mutiny.ext.web.client.WebClient;
-import nl.vdijkit.aas.domain.TimedOutItem;
 import nl.vdijkit.aas.domain.Track;
 import nl.vdijkit.aas.domain.UnavailableItem;
 import org.jboss.logging.Logger;
@@ -22,12 +21,6 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class TrackClient {
     private static final Logger LOGGER = Logger.getLogger(TrackClient.class);
-    private static final Function<HttpResponse<Buffer>, List<Track>> HTTP_RESPONSE_TRACK_FUNCTION = httpResponse -> {
-        if (httpResponse.statusCode() == 200) {
-            return new TrackMapper(httpResponse.bodyAsJsonObject()).mapResponse();
-        }
-        return List.of(new UnavailableItem());
-    };
     private final WebClient client;
 
     @Inject
@@ -37,12 +30,22 @@ public class TrackClient {
     }
 
     public Uni<List<Track>> track(List<String> items) {
+        LOGGER.infof("tracks to be requested: '%s'", items);
         return client.get("/track")
                 .addQueryParam("q", String.join(",", items))
                 .send()
-                .map(HTTP_RESPONSE_TRACK_FUNCTION)
+                .map(mapResponse(items))
                 .ifNoItem().after(Duration.ofMillis(5000))
-                .recoverWithItem(List.of(new TimedOutItem()));
+                .recoverWithItem(items.stream().map(UnavailableItem::new).collect(Collectors.toList()));
+    }
+
+    private Function<HttpResponse<Buffer>, List<Track>> mapResponse(List<String> requestedItems) {
+        return bufferHttpResponse -> {
+            if (bufferHttpResponse.statusCode() == 200) {
+                return new TrackMapper(bufferHttpResponse.bodyAsJsonObject()).mapResponse();
+            }
+            return requestedItems.stream().map(UnavailableItem::new).collect(Collectors.toList());
+        };
     }
 
     private static class TrackMapper {

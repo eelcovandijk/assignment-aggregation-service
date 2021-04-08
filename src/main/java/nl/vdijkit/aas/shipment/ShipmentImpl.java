@@ -22,6 +22,12 @@ public class ShipmentImpl implements Shipment {
     }
 
     @Override
+    public String getItem() {
+        return item;
+    }
+
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;

@@ -4,4 +4,5 @@ import io.vertx.core.json.JsonObject;
 
 public interface Shipment {
     JsonObject toJson();
+    String getItem();
 }

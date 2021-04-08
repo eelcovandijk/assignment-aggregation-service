@@ -1,5 +1,6 @@
 package nl.vdijkit.aas.aggregate;
 
+
 import io.vertx.core.json.JsonObject;
 import nl.vdijkit.aas.domain.Pricing;
 import nl.vdijkit.aas.domain.Shipment;

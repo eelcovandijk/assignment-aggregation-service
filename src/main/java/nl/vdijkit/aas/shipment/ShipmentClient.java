@@ -24,12 +24,6 @@ import java.util.stream.Collectors;
 @ApplicationScoped
 public class ShipmentClient {
     private static final Logger LOGGER = Logger.getLogger(ShipmentClient.class);
-    private static final Function<HttpResponse<Buffer>, List<Shipment>> HTTP_RESPONSE_TRACK_FUNCTION = httpResponse -> {
-        if (httpResponse.statusCode() == 200) {
-            return new ShipmentMapper(httpResponse.bodyAsJsonObject()).mapResponse();
-        }
-        return List.of(new UnavailableItem());
-    };
     private final WebClient client;
 
     @Inject
@@ -42,9 +36,18 @@ public class ShipmentClient {
         return client.get("/shipments")
                 .addQueryParam("q", String.join(",", items))
                 .send()
-                .map(HTTP_RESPONSE_TRACK_FUNCTION)
+                .map(mapResponse(items))
                 .ifNoItem().after(Duration.ofMillis(5000))
-                .recoverWithItem(List.of(new TimedOutItem()));
+                .recoverWithItem(items.stream().map(UnavailableItem::new).collect(Collectors.toList()));
+    }
+
+    private Function<HttpResponse<Buffer>, List<Shipment>> mapResponse(List<String> requestedItems) {
+        return bufferHttpResponse -> {
+            if (bufferHttpResponse.statusCode() == 200) {
+                return new ShipmentMapper(bufferHttpResponse.bodyAsJsonObject()).mapResponse();
+            }
+            return  requestedItems.stream().map(UnavailableItem::new).collect(Collectors.toList());
+        };
     }
 
     private static class ShipmentMapper {
