@@ -1,4 +1,38 @@
-# getting-started-reactive project
+# Running the assignement
+
+prebuild packages in the dist directory.
+
+1 First start the backend-services
+
+``` docker-compose up ```
+
+2.1 run the applications fat jar with a Java 11 runtime:
+
+`java -jar ./dist/assessment-aggration-service-1.0.0-SNAPSHOT-runner.jar`
+
+2.2 or go native with:
+(only on Linux)
+
+```./dist/assessment-aggration-service-1.0.0-SNAPSHOT-runner```
+
+2.3 or build the docker image
+
+See ```src/main/docker/Dockerfile.jvm```
+
+2.4 or start in dev mode
+
+```./mvnw compile quarkus:dev```
+
+3 call api 
+
+the aggregator api is available by default with host: `localhost` and port `8082`.
+`http://localhost:8082/aggregation?track=121&shipments=4&pricing=AA`
+
+It connects to the backend services on `http://localhost:8080`
+
+
+
+# getting-started
 
 This project uses Quarkus, the Supersonic Subatomic Java Framework.
 
@@ -24,16 +58,16 @@ Be aware that it’s not an _über-jar_ as the dependencies are copied into the 
 
 If you want to build an _über-jar_, execute the following command:
 ```shell script
-./mvnw package -Dquarkus.package.type=uber-jar
+./mvnw package -Dquarkus.package.type=uber-jar -DskipTests
 ```
 
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
+The application is now runnable using `java -jar target/assessment-aggration-service-1.0.0-SNAPSHOT-runner.jar`.
 
 ## Creating a native executable
 
 You can create a native executable using: 
 ```shell script
-./mvnw package -Pnative
+./mvnw package -Pnative -DskipTests
 ```
 
 Or, if you don't have GraalVM installed, you can run the native executable build in a container using: 
@@ -41,17 +75,6 @@ Or, if you don't have GraalVM installed, you can run the native executable build
 ./mvnw package -Pnative -Dquarkus.native.container-build=true
 ```
 
-You can then execute your native executable with: `./target/getting-started-reactive-1.0.0-SNAPSHOT-runner`
+You can then execute your native executable with: `./target/assessment-aggration-service-1.0.0-SNAPSHOT-runner`
 
 If you want to learn more about building native executables, please consult https://quarkus.io/guides/maven-tooling.html.
-
-## Related guides
-
-
-## Provided examples
-
-### RESTEasy Reactive example
-
-Rest is easy peasy & reactive with this Hello World RESTEasy Reactive resource.
-
-[Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)

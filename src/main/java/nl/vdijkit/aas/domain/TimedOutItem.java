@@ -1,21 +1,8 @@
 package nl.vdijkit.aas.domain;
 
-import io.vertx.core.json.JsonObject;
+public class TimedOutItem<T> extends UnavailableItem<T> {
 
-public class TimedOutItem implements Track, Shipment, Pricing {
-    private final String item;
-
-    public TimedOutItem(String item) {
-        this.item = item;
-    }
-
-    @Override
-    public String getItem() {
-        return item;
-    }
-
-    @Override
-    public JsonObject toJson() {
-        return new JsonObject().put(item, "'null'");
+    public TimedOutItem(String item, Class<T> itemType) {
+        super(item, itemType);
     }
 }

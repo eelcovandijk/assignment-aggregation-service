@@ -2,9 +2,6 @@ package nl.vdijkit.aas.aggregate;
 
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.json.JsonObject;
-import nl.vdijkit.aas.pricing.PricingClient;
-import nl.vdijkit.aas.shipment.ShipmentClient;
-import nl.vdijkit.aas.track.TrackClient;
 import org.jboss.logging.Logger;
 
 import javax.inject.Inject;
@@ -22,12 +19,6 @@ public class AggregationResource {
     private static final Logger LOGGER = Logger.getLogger(AggregationResource.class);
 
     @Inject
-    TrackClient trackClient;
-    @Inject
-    ShipmentClient shipmentClient;
-    @Inject
-    PricingClient pricingClient;
-    @Inject
     Dispatcher dispatcher;
 
     @GET
@@ -35,7 +26,7 @@ public class AggregationResource {
     public Uni<JsonObject> aggregate(@QueryParam("pricing") String pricingItems,
                                      @QueryParam("track") String trackItems,
                                      @QueryParam("shipments") String shipmentItems) {
-        LOGGER.infof("received aggregation request for pricing '%s', tracks '%s', shipments '%s'", new Object[] {pricingItems, trackItems, shipmentItems});
+        LOGGER.infof("Received aggregation request for pricing '%s', tracks '%s', shipments '%s'", new Object[] {pricingItems, trackItems, shipmentItems});
 
         AggregationRequestProcessor aggregationRequestProcessor = new AggregationRequestProcessor(convertToList(pricingItems), convertToList(trackItems), convertToList(shipmentItems));
         dispatcher.registerNewRequest(aggregationRequestProcessor);

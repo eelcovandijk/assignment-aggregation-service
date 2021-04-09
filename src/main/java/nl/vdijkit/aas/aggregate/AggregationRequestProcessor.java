@@ -1,9 +1,11 @@
 package nl.vdijkit.aas.aggregate;
 
 import io.vertx.core.json.JsonObject;
-import nl.vdijkit.aas.domain.Pricing;
-import nl.vdijkit.aas.domain.Shipment;
-import nl.vdijkit.aas.domain.Track;
+import nl.vdijkit.aas.domain.Item;
+import nl.vdijkit.aas.domain.UnavailableItem;
+import nl.vdijkit.aas.pricing.Pricing;
+import nl.vdijkit.aas.shipment.Shipment;
+import nl.vdijkit.aas.track.Track;
 import org.jboss.logging.Logger;
 
 import java.util.ArrayList;
@@ -16,14 +18,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class AggregationRequestProcessor {
     private static final Logger LOGGER = Logger.getLogger(Dispatcher.class);
     private final int totalItems;
-    private AtomicInteger currentItems = new AtomicInteger();
+    private final AtomicInteger currentItems = new AtomicInteger();
     private final List<String> pricingItems;
     private final List<String> trackItems;
     private final List<String> shipmentItems;
     private final String id;
-    private List<Track> tracks = new ArrayList<>();
-    private List<Shipment> shipments = new ArrayList<>();
-    private List<Pricing> pricing = new ArrayList<>();
+    private final List<Item> tracks = new ArrayList<>();
+    private final List<Item> shipments = new ArrayList<>();
+    private final List<Item> pricing = new ArrayList<>();
 
     public AggregationRequestProcessor(List<String> pricingItems, List<String> trackItems, List<String> shipmentItems) {
         this.pricingItems = pricingItems;
@@ -33,33 +35,76 @@ public class AggregationRequestProcessor {
         this.id = UUID.randomUUID().toString();
     }
 
-    public void registerTrackResponse(Track trackResponse) {
+    public void registerResponse(Item item) {
+        if(item instanceof UnavailableItem) {
+            UnavailableItem<? extends Item> unavailableItem = (UnavailableItem<? extends Item>) item;
+            registerResponse(unavailableItem.getItemType(), item);
+        } else {
+            registerResponse(item.getClass(), item);
+        }
+    }
+
+    private void registerResponse(Class<? extends Item> type, Item item) {
+        if(type.isAssignableFrom(Track.class)) {
+            registerTrackResponse(item);
+        } else if (type.isAssignableFrom(Shipment.class)) {
+            registerShipmentResponse(item);
+        } else if (type.isAssignableFrom(Pricing.class)) {
+            registerPricingResponse(item);
+        } else {
+            throw new IllegalStateException("Failed to check for response item. Unknown type: " + item);
+        }
+    }
+
+    private void registerTrackResponse(Item trackResponse) {
         LOGGER.infof("register track response: '%s", trackResponse);
         tracks.add(trackResponse);
         currentItems.incrementAndGet();
     }
 
-    public void registerPricingResponse(Pricing pricingResponse) {
+    private void registerPricingResponse(Item pricingResponse) {
         LOGGER.infof("register pricing response: '%s", pricingResponse);
         pricing.add(pricingResponse);
         currentItems.incrementAndGet();
     }
 
-    public void registerShipmentResponse(Shipment shipmentResponse) {
+    private void registerShipmentResponse(Item shipmentResponse) {
         LOGGER.infof("register shipment response: '%s", shipmentResponse);
         shipments.add(shipmentResponse);
         currentItems.incrementAndGet();
     }
 
-    public boolean containsTrackItem(String item) {
+    public boolean containsItem(Item item) {
+        if(item instanceof UnavailableItem) {
+            UnavailableItem<? extends Item> unavailableItem = (UnavailableItem<? extends Item>) item;
+            return containsItem(unavailableItem.getItemType(), item);
+        } else {
+            return containsItem(item.getClass(), item);
+        }
+    }
+
+    private boolean containsItem(Class<? extends Item> type, Item item) {
+        if(type.isAssignableFrom(Track.class)) {
+            return containsTrackItem(item.getItem());
+        } else if (type.isAssignableFrom(Shipment.class)) {
+            return containsShipmentItem(item.getItem());
+        } else if (type.isAssignableFrom(Pricing.class)) {
+            return containsPricingItem(item.getItem());
+        } else {
+            throw new IllegalStateException("Failed to check for response item. Unknown type: " + item);
+        }
+    }
+
+
+    private boolean containsTrackItem(String item) {
         return trackItems.contains(item);
     }
 
-    public boolean containsPricingItem(String item) {
+    private boolean containsPricingItem(String item) {
         return pricingItems.contains(item);
     }
 
-    public boolean containsShipmentItem(String item) {
+    private boolean containsShipmentItem(String item) {
         return shipmentItems.contains(item);
     }
 
@@ -72,8 +117,8 @@ public class AggregationRequestProcessor {
             while (!isComplete()) {
                 //block until complete
             }
-            return new AggregateImpl(tracks, shipments, pricing).toJson();
-        }).completeOnTimeout(new AggregateImpl(tracks, shipments, pricing).toJson(), 5, TimeUnit.SECONDS);
+            return new Aggregate(tracks, shipments, pricing).toJson();
+        }).completeOnTimeout(new Aggregate(tracks, shipments, pricing).toJson(), 10, TimeUnit.SECONDS);
     }
 
     public List<String> getTrackItems() {
