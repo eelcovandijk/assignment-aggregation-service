@@ -109,7 +109,7 @@ public class AggregationRequestProcessor {
     }
 
     public boolean isComplete() {
-        return currentItems.get() == totalItems;
+        return currentItems.get() >= totalItems;
     }
 
     public Future<JsonObject> toResponse() {

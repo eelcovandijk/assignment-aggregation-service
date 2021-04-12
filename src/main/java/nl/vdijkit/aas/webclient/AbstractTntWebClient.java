@@ -44,7 +44,7 @@ public abstract class AbstractTntWebClient<T> implements TntWebClient {
                 .addQueryParam("q", String.join(",", items))
                 .send()
                 .map(mapResponse(items))
-                .ifNoItem().after(Duration.ofMillis(5000))
+                .ifNoItem().after(Duration.ofMillis(6000))
                 .recoverWithItem(items.stream().map((item) -> new TimedOutItem<>(item, Track.class)).collect(Collectors.toList()));
     }
 

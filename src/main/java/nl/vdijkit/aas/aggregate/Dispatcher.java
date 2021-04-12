@@ -10,6 +10,7 @@ import org.jboss.logging.Logger;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -51,7 +52,7 @@ public class Dispatcher {
     }
 
     public static class AggregationResponseHandler {
-        private final Map<String, AggregationRequestProcessor> requestListByHash = new HashMap<>();
+        private final Map<String, AggregationRequestProcessor> requestListByHash = new ConcurrentHashMap<>();
 
         public void registerAggregationRequest(AggregationRequestProcessor aggregationRequestProcessor) {
             requestListByHash.put(aggregationRequestProcessor.getId(), aggregationRequestProcessor);
