@@ -11,8 +11,6 @@ import io.vertx.mutiny.ext.web.client.WebClient;
 import nl.vdijkit.aas.domain.Item;
 import nl.vdijkit.aas.domain.TimedOutItem;
 import nl.vdijkit.aas.domain.UnavailableItem;
-import nl.vdijkit.aas.track.TrackClient;
-import nl.vdijkit.aas.track.Track;
 import org.jboss.logging.Logger;
 
 import java.time.Duration;
@@ -21,7 +19,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public abstract class AbstractTntWebClient<T> implements TntWebClient {
-    private static final Logger LOGGER = Logger.getLogger(TrackClient.class);
+    private static final Logger LOGGER = Logger.getLogger(AbstractTntWebClient.class);
     private final WebClient client;
     private final String path;
     private final ResponseItemMapper mapper;

@@ -3,7 +3,6 @@ package nl.vdijkit.aas.pricing;
 import io.vertx.mutiny.core.Vertx;
 import nl.vdijkit.aas.webclient.AbstractTntWebClient;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
-import org.jboss.logging.Logger;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
