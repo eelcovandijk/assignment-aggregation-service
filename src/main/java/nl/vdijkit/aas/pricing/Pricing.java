@@ -25,6 +25,10 @@ public class Pricing implements Item {
         return country;
     }
 
+    public Double getAmount() {
+        return amount;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

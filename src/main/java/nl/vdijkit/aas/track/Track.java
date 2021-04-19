@@ -25,6 +25,10 @@ public class Track implements Item {
         return new JsonObject().put(item, status);
     }
 
+    public String getStatus() {
+        return status;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

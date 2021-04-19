@@ -26,6 +26,9 @@ public class Shipment implements Item {
         return item;
     }
 
+    public JsonArray getProducts() {
+        return products;
+    }
 
     @Override
     public boolean equals(Object o) {

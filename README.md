@@ -1,4 +1,4 @@
-# Running the assignement
+# Running the assignment
 
 prebuild packages in the dist directory.
 
@@ -31,6 +31,31 @@ the aggregator api is available by default with host: `localhost` and port `8082
 It connects to the backend services on `http://localhost:8080`
 
 
+# Configure the assignment
+
+The properties can be overridden with system variables.
+e.g. `-Dquarkus.http.port=8081`
+
+or as environmentvariables
+e.g. `export QUARKUS_HTTP_PORT=8081`
+
+Configuration of the service
+
+`quarkus.http.port` default 8082
+
+Configuration of the clients
+
+`track.client.host` default localhost
+
+`track.client.port` default 8080
+
+`shipment.client.host` default localhost
+
+`shipment.client.port` default 8080
+
+`track.client.host` default localhost
+
+`track.client.port` default 8080
 
 # getting-started
 
@@ -58,7 +83,7 @@ Be aware that it’s not an _über-jar_ as the dependencies are copied into the 
 
 If you want to build an _über-jar_, execute the following command:
 ```shell script
-./mvnw package -Dquarkus.package.type=uber-jar -DskipTests
+./mvnw package -Dquarkus.package.type=uber-jar
 ```
 
 The application is now runnable using `java -jar target/assessment-aggration-service-1.0.0-SNAPSHOT-runner.jar`.
@@ -67,12 +92,12 @@ The application is now runnable using `java -jar target/assessment-aggration-ser
 
 You can create a native executable using: 
 ```shell script
-./mvnw package -Pnative -DskipTests
+./mvnw package -Pnative
 ```
 
 Or, if you don't have GraalVM installed, you can run the native executable build in a container using: 
 ```shell script
-./mvnw package -Pnative -Dquarkus.native.container-build=true -DskipTests
+./mvnw package -Pnative -Dquarkus.native.container-build=true
 ```
 
 You can then execute your native executable with: `./target/assessment-aggration-service-1.0.0-SNAPSHOT-runner`

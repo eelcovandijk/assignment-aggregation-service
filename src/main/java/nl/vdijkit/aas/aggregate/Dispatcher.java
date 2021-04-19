@@ -5,6 +5,7 @@ import nl.vdijkit.aas.domain.Item;
 import nl.vdijkit.aas.pricing.PricingClient;
 import nl.vdijkit.aas.shipment.ShipmentClient;
 import nl.vdijkit.aas.track.TrackClient;
+import org.apache.commons.lang3.StringUtils;
 import org.jboss.logging.Logger;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -85,6 +86,12 @@ public class Dispatcher {
         private Timer timer = new Timer();
 
         public void queueItem(String item, Runnable dequeu) {
+            if(StringUtils.isNotBlank(item)) {
+                queueTheItem(item, dequeu);
+            }
+        }
+
+        private void queueTheItem(String item, Runnable dequeu) {
             items.add(item);
             counter.incrementAndGet();
             TimerTask dequeueTask = new TimerTask() {

@@ -14,9 +14,11 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class AggregationRequestProcessor {
-    private static final Logger LOGGER = Logger.getLogger(Dispatcher.class);
+    private static final Logger LOGGER = Logger.getLogger(AggregationRequestProcessor.class);
     private final int totalItems;
     private final AtomicInteger currentItems = new AtomicInteger();
     private final List<String> pricingItems;
@@ -36,7 +38,7 @@ public class AggregationRequestProcessor {
     }
 
     public void registerResponse(Item item) {
-        if(item instanceof UnavailableItem) {
+        if (item instanceof UnavailableItem) {
             UnavailableItem<? extends Item> unavailableItem = (UnavailableItem<? extends Item>) item;
             registerResponse(unavailableItem.getItemType(), item);
         } else {
@@ -45,7 +47,7 @@ public class AggregationRequestProcessor {
     }
 
     private void registerResponse(Class<? extends Item> type, Item item) {
-        if(type.isAssignableFrom(Track.class)) {
+        if (type.isAssignableFrom(Track.class)) {
             registerTrackResponse(item);
         } else if (type.isAssignableFrom(Shipment.class)) {
             registerShipmentResponse(item);
@@ -75,7 +77,7 @@ public class AggregationRequestProcessor {
     }
 
     public boolean containsItem(Item item) {
-        if(item instanceof UnavailableItem) {
+        if (item instanceof UnavailableItem) {
             UnavailableItem<? extends Item> unavailableItem = (UnavailableItem<? extends Item>) item;
             return containsItem(unavailableItem.getItemType(), item);
         } else {
@@ -84,7 +86,7 @@ public class AggregationRequestProcessor {
     }
 
     private boolean containsItem(Class<? extends Item> type, Item item) {
-        if(type.isAssignableFrom(Track.class)) {
+        if (type.isAssignableFrom(Track.class)) {
             return containsTrackItem(item.getItem());
         } else if (type.isAssignableFrom(Shipment.class)) {
             return containsShipmentItem(item.getItem());
@@ -113,12 +115,29 @@ public class AggregationRequestProcessor {
     }
 
     public Future<JsonObject> toResponse() {
-        return CompletableFuture.supplyAsync(() -> {
+        return CompletableFuture.supplyAsync(waitForResponsesToAggregate())
+                .completeOnTimeout(new TimeOutAggregate(), 10, TimeUnit.SECONDS)
+                .thenApply(aggregateToJsonResponse());
+    }
+
+    private Supplier<Aggregate> waitForResponsesToAggregate() {
+        return () -> {
             while (!isComplete()) {
                 //block until complete
             }
-            return new Aggregate(tracks, shipments, pricing).toJson();
-        }).completeOnTimeout(new Aggregate(tracks, shipments, pricing).toJson(), 10, TimeUnit.SECONDS);
+            return new Aggregate(tracks, shipments, pricing);
+        };
+    }
+
+    private Function<Aggregate, JsonObject> aggregateToJsonResponse() {
+        return (response) -> {
+            if (response instanceof TimeOutAggregate) {
+                Aggregate aggregateSoFar = new Aggregate(tracks, shipments, pricing);
+                LOGGER.warnf("Return response after timeout: %s", aggregateSoFar);
+                return aggregateSoFar.toJson();
+            }
+            return response.toJson();
+        };
     }
 
     public List<String> getTrackItems() {
@@ -143,7 +162,6 @@ public class AggregationRequestProcessor {
         if (o == null || getClass() != o.getClass()) return false;
         AggregationRequestProcessor that = (AggregationRequestProcessor) o;
         return totalItems == that.totalItems &&
-                Objects.equals(id, that.id) &&
                 Objects.equals(tracks, that.tracks) &&
                 Objects.equals(shipments, that.shipments) &&
                 Objects.equals(pricing, that.pricing);
@@ -151,7 +169,7 @@ public class AggregationRequestProcessor {
 
     @Override
     public int hashCode() {
-        return Objects.hash(totalItems, id, tracks, shipments, pricing);
+        return Objects.hash(totalItems, tracks, shipments, pricing);
     }
 
     @Override
@@ -168,4 +186,6 @@ public class AggregationRequestProcessor {
                 ", pricing=" + pricing +
                 '}';
     }
+
+
 }
