@@ -1,7 +1,10 @@
 package nl.vdijkit.aas.aggregate;
 
+import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.json.JsonObject;
+import nl.vdijkit.aas.domain.ItemCompleted;
+import nl.vdijkit.aas.domain.JsonItem;
 import org.apache.commons.lang3.StringUtils;
 import org.jboss.logging.Logger;
 
@@ -20,17 +23,16 @@ import java.util.stream.Collectors;
 /**
  * Implementation of the aggregation api.
  * The interface description is published with Swagger #see: http://{host}:{port}/q/swagger-ui/#/default/get_aggregation
- *
  */
 @Path("/aggregation")
 public class AggregationResource {
     private static final Logger LOGGER = Logger.getLogger(AggregationResource.class);
 
-    private final Dispatcher dispatcher;
+    private final ReactiveDispatcher reactiveDispatcher;
 
     @Inject
-    public AggregationResource(Dispatcher dispatcher) {
-        this.dispatcher = dispatcher;
+    public AggregationResource(ReactiveDispatcher reactiveDispatcher) {
+        this.reactiveDispatcher = reactiveDispatcher;
     }
 
     @GET
@@ -38,16 +40,30 @@ public class AggregationResource {
     public Uni<JsonObject> aggregate(@QueryParam("pricing") String pricingItems,
                                      @QueryParam("track") String trackItems,
                                      @QueryParam("shipments") String shipmentItems) {
-        LOGGER.infof("Received aggregation request for pricing '%s', tracks '%s', shipments '%s'", new Object[] {pricingItems, trackItems, shipmentItems});
 
-        AggregationRequestProcessor aggregationRequestProcessor = new AggregationRequestProcessor(convertToList(pricingItems), convertToList(trackItems), convertToList(shipmentItems));
-        dispatcher.registerNewRequest(aggregationRequestProcessor);
+        Request request = new Request(convertToList(pricingItems), convertToList(trackItems), convertToList(shipmentItems));
+        LOGGER.infof("Received aggregation request: '%s'", request);
 
-        return Uni.createFrom().future(aggregationRequestProcessor.toResponse());
+        return reactiveDispatcher.process(request).toMulti()
+                .flatMap(completedList -> Multi.createFrom().iterable(completedList))
+                .map(ItemCompleted::getReactiveItem)
+                .map(JsonItem::new)
+                .group().by(JsonItem::getItemType)
+                .flatMap(m -> m)
+                .collect()
+                .in(JsonObject::new, (jsonObject, jsonItem) -> {
+                    LOGGER.infof("put in response: %s", jsonItem.getJsonObject().toString());
+                    if(jsonObject.containsKey(jsonItem.getItemType().name().toLowerCase())) {
+                        jsonObject.getJsonObject(jsonItem.getItemType().name().toLowerCase()).mergeIn(jsonItem.getJsonObject());
+                    } else {
+                        jsonObject.put(jsonItem.getItemType().name().toLowerCase(), jsonItem.getJsonObject());
+                    }
+                });
+
     }
 
     private List<String> convertToList(String items) {
-        if(null != items) {
+        if (null != items) {
             return splitItems(items).stream()
                     .filter(StringUtils::isNotBlank)
                     .collect(Collectors.toList());

@@ -1,11 +1,11 @@
 package nl.vdijkit.aas.webclient;
 
 import io.vertx.core.json.JsonObject;
-import nl.vdijkit.aas.domain.Item;
+import nl.vdijkit.aas.domain.ReactiveItem;
 
 import java.util.List;
 
 public interface ResponseItemMapper {
 
-    List<Item> mapResponse(JsonObject response);
+    List<ReactiveItem> mapResponse(JsonObject response);
 }

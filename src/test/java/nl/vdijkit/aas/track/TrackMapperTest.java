@@ -1,7 +1,8 @@
 package nl.vdijkit.aas.track;
 
 import io.vertx.core.json.JsonObject;
-import nl.vdijkit.aas.domain.Item;
+import nl.vdijkit.aas.domain.ItemType;
+import nl.vdijkit.aas.domain.ReactiveItem;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -13,14 +14,14 @@ class TrackMapperTest {
 
     @Test
     void nullResponseShouldReturnEmptyList() {
-        List<Item> mappedResponse = trackMapper.mapResponse(null);
+        List<ReactiveItem> mappedResponse = trackMapper.mapResponse(null);
         assertNotNull(mappedResponse);
         assertTrue(mappedResponse.isEmpty());
     }
 
     @Test
     void emptyResponseShouldReturnEmptyList() {
-        List<Item> mappedResponse = trackMapper.mapResponse(new JsonObject());
+        List<ReactiveItem> mappedResponse = trackMapper.mapResponse(new JsonObject());
         assertNotNull(mappedResponse);
         assertTrue(mappedResponse.isEmpty());
     }
@@ -30,15 +31,14 @@ class TrackMapperTest {
         JsonObject pricingResponse = new JsonObject();
         pricingResponse.putNull("1");
 
-        List<Item> mappedResponse = trackMapper.mapResponse(pricingResponse);
+        List<ReactiveItem> mappedResponse = trackMapper.mapResponse(pricingResponse);
 
         assertAll(() -> {
             assertEquals(1, mappedResponse.size());
-            Item item = mappedResponse.get(0);
-            assertTrue(item instanceof Track);
-            Track track = (Track) item;
-            assertEquals("1", track.getItem());
-            assertNull(track.getStatus());
+            ReactiveItem item = mappedResponse.get(0);
+            assertEquals("1", item.getItem());
+            assertEquals(ItemType.TRACK, item.getType());
+            assertNull(item.getStatus());
         });
     }
 
@@ -47,15 +47,14 @@ class TrackMapperTest {
         JsonObject pricingResponse = new JsonObject();
         pricingResponse.put("1", "PROCESSED");
 
-        List<Item> mappedResponse = trackMapper.mapResponse(pricingResponse);
+        List<ReactiveItem> mappedResponse = trackMapper.mapResponse(pricingResponse);
 
         assertAll(() -> {
             assertEquals(1, mappedResponse.size());
-            Item item = mappedResponse.get(0);
-            assertTrue(item instanceof Track);
-            Track track = (Track) item;
-            assertEquals("1", track.getItem());
-            assertEquals("PROCESSED", track.getStatus());
+            ReactiveItem item = mappedResponse.get(0);
+            assertEquals(ItemType.TRACK, item.getType());
+            assertEquals("1", item.getItem());
+            assertEquals("PROCESSED", item.getStatus());
         });
     }
 

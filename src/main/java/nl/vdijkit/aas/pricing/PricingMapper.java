@@ -1,7 +1,7 @@
 package nl.vdijkit.aas.pricing;
 
 import io.vertx.core.json.JsonObject;
-import nl.vdijkit.aas.domain.Item;
+import nl.vdijkit.aas.domain.ReactiveItem;
 import nl.vdijkit.aas.webclient.ResponseItemMapper;
 import org.jboss.logging.Logger;
 
@@ -12,11 +12,11 @@ import java.util.stream.Collectors;
 class PricingMapper implements ResponseItemMapper {
     private static final Logger LOGGER = Logger.getLogger(PricingMapper.class);
 
-    public List<Item> mapResponse(JsonObject response) {
+    public List<ReactiveItem> mapResponse(JsonObject response) {
         LOGGER.infof("prices received: '%s'", response);
         if (null != response) {
             return response.stream()
-                    .map(entry -> new Pricing(entry.getKey(), this.mapAmount(entry.getValue())))
+                    .map(entry -> ReactiveItem.pricing(entry.getKey(), this.mapAmount(entry.getValue())))
                     .collect(Collectors.toList());
         }
         return Collections.emptyList();
