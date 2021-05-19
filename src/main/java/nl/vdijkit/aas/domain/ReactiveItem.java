@@ -19,21 +19,21 @@ public class ReactiveItem {
     }
 
     public static ReactiveItem shipment(String itemKey, JsonArray products) {
-        ReactiveItem item = new ReactiveItem(itemKey);
+        var item = new ReactiveItem(itemKey);
         item.products = products;
         item.type = ItemType.SHIPMENTS;
         return item;
     }
 
     public static ReactiveItem pricing(String itemKey, Double amount) {
-        ReactiveItem item = new ReactiveItem(itemKey);
+        var item = new ReactiveItem(itemKey);
         item.amount = amount;
         item.type = ItemType.PRICING;
         return item;
     }
 
     public static ReactiveItem track(String itemKey, String status) {
-        ReactiveItem item = new ReactiveItem(itemKey);
+        var item = new ReactiveItem(itemKey);
         item.status = status;
         item.type = ItemType.TRACK;
         return item;

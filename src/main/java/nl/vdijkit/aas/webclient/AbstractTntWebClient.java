@@ -2,7 +2,6 @@ package nl.vdijkit.aas.webclient;
 
 import io.smallrye.mutiny.Multi;
 import io.vertx.core.json.DecodeException;
-import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.client.WebClientOptions;
 import io.vertx.mutiny.core.Vertx;
 import io.vertx.mutiny.core.buffer.Buffer;
@@ -53,7 +52,7 @@ public abstract class AbstractTntWebClient implements TntWebClient {
                 .ifNoItem().after(Duration.ofMillis(6000))
                 .recoverWithItem(() -> {
                     LOGGER.errorf("Failed to request %s for items: '%s' with resource: %s", this.getType(), items, this.path);
-                    return items.stream().map((item) -> new TimedOutItem(item.getItem(), getType())).collect(Collectors.toList());
+                    return items.stream().map(item -> new TimedOutItem(item.getItem(), getType())).collect(Collectors.toList());
                 })
                 .toMulti()
                 .flatMap(mapToCorrectReponseItemsInCaseOfDupplicateItemsInRequest(items));
@@ -78,17 +77,17 @@ public abstract class AbstractTntWebClient implements TntWebClient {
                 return mapResponseObject(bufferHttpResponse, requestedItems);
             }
             LOGGER.warnf("Received invalid response status while requesting %s for items: '%s' with path: %s. Response: %s", this.getType(), requestedItems, this.path, bufferHttpResponse.toString());
-            return requestedItems.stream().map((item) -> new UnavailableItem(item, getType())).collect(Collectors.toList());
+            return requestedItems.stream().map(item -> new UnavailableItem(item, getType())).collect(Collectors.toList());
         };
     }
 
     private List<ReactiveItem> mapResponseObject(HttpResponse<Buffer> response, List<String> requestedItems) {
         try {
-            JsonObject responseObject = response.bodyAsJsonObject();
+            var responseObject = response.bodyAsJsonObject();
             return mapper.mapResponse(responseObject);
         } catch (DecodeException decodeException) {
             LOGGER.error("Failed to decode json response while requesting items:  " + requestedItems, decodeException);
-            return requestedItems.stream().map((item) -> new UnavailableItem(item, getType())).collect(Collectors.toList());
+            return requestedItems.stream().map(item -> new UnavailableItem(item, getType())).collect(Collectors.toList());
         }
     }
 

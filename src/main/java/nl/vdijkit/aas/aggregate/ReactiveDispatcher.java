@@ -29,7 +29,7 @@ import static nl.vdijkit.aas.domain.ItemType.*;
 @ApplicationScoped
 public class ReactiveDispatcher {
     private static final Logger LOGGER = Logger.getLogger(ReactiveDispatcher.class);
-    private static final Function<Request, List<ItemInProcess>> MAP_REQUEST_TO_ITEMS = (req) -> {
+    private static final Function<Request, List<ItemInProcess>> MAP_REQUEST_TO_ITEMS = req -> {
 
         Stream<ItemInProcess> shipmentItems = req.getShipmentItems().stream().map(item -> new ItemInProcess(SHIPMENTS, item));
         Stream<ItemInProcess> trackItems = req.getTrackItems().stream().map(item -> new ItemInProcess(ItemType.TRACK, item));
@@ -39,25 +39,25 @@ public class ReactiveDispatcher {
     };
 
     private final Map<ItemType, TntWebClient> webClients;
-    private final BroadcastProcessor<RequestHandler> processor = BroadcastProcessor.create();
-    private final BroadcastProcessor<ReactiveItem> handler = BroadcastProcessor.create();
+    private final BroadcastProcessor<RequestHandler> requestProcessor = BroadcastProcessor.create();
+    private final BroadcastProcessor<ReactiveItem> itemProcessor = BroadcastProcessor.create();
 
 
     @Inject
     public ReactiveDispatcher(Instance<TntWebClient> webClientInstances) {
-        this.webClients = webClientInstances.stream().collect(Collectors.toMap(TntWebClient::getType, (webclient) -> webclient));
+        this.webClients = webClientInstances.stream().collect(Collectors.toMap(TntWebClient::getType, webclient -> webclient));
         registerProcessing();
     }
 
     public Uni<List<ReactiveItem>> process(Request request) {
-        RequestHandler requestHandler = new RequestHandler(request);
-        processor.onNext(requestHandler);
+        var requestHandler = new RequestHandler(request);
+        requestProcessor.onNext(requestHandler);
         return requestHandler.registerResponseConsumer();
     }
 
     public void registerProcessing() {
 
-        processor.emitOn(Infrastructure.getDefaultWorkerPool())
+        requestProcessor.emitOn(Infrastructure.getDefaultWorkerPool())
                 .onItem()
                 .transform(i -> i)
                 .stage(listenerMulti -> {
@@ -74,11 +74,11 @@ public class ReactiveDispatcher {
                 })
                 .emitOn(Infrastructure.getDefaultWorkerPool())
                 .subscribe()
-                .withSubscriber(handler);
+                .withSubscriber(itemProcessor);
     }
 
-    private Multi<Tuple2<ItemType, List<ItemInProcess>>> groupOf5ForType(Multi<RequestHandler> requestHandler, ItemType type) {
-        return requestHandler.flatMap(handler -> Multi.createFrom().iterable(handler.itemsInProcess))
+    private Multi<Tuple2<ItemType, List<ItemInProcess>>> groupOf5ForType(Multi<RequestHandler> requestHandlerPublisher, ItemType type) {
+        return requestHandlerPublisher.flatMap(requestHandler -> Multi.createFrom().iterable(requestHandler.itemsInProcess))
                 .filter(itemInProcess -> type.equals(itemInProcess.getType()))
                 .group()
                 .intoLists()
@@ -106,7 +106,7 @@ public class ReactiveDispatcher {
         }
 
         public Uni<List<ReactiveItem>> registerResponseConsumer() {
-            return handler.onItem().transform(i -> i)
+            return itemProcessor.onItem().transform(i -> i)
                     .filter(item -> itemsInProcess.stream().anyMatch(iip -> iip.getItem().equals(item.getItem())))
                     .onItem().invoke(counter::incrementAndGet)
                     .toUni().repeat().whilst(isResponseComplete)

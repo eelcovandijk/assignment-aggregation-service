@@ -4,7 +4,6 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.matching.ContainsPattern;
 import com.github.tomakehurst.wiremock.matching.EqualToPattern;
-import com.github.tomakehurst.wiremock.matching.StringValuePattern;
 import io.quarkus.test.junit.QuarkusTest;
 import org.hamcrest.collection.IsIn;
 import org.hamcrest.core.Is;
@@ -28,7 +27,7 @@ import static io.restassured.RestAssured.given;
  * With the variable IS_WITH_MOCKED_SERVICES it is possible to switch the real services for wiremock services
  */
 @QuarkusTest
-public class AggregationServiceComponentTest {
+class AggregationServiceComponentTest {
     private static final Boolean IS_WITH_MOCKED_SERVICES = true;
     private static final BiFunction<Void, Throwable, Executable> EXECUTABLE_BI_FUNCTION = (ok, exception) -> () -> {
         if (null != exception) {
@@ -63,7 +62,7 @@ public class AggregationServiceComponentTest {
 
 
     @Test
-    public void aggregationEndpointShouldAcceptTrack() {
+    void aggregationEndpointShouldAcceptTrack() {
         setMockOnlyWhenEnabled(this::mockTrackCall);
 
         given()
@@ -75,7 +74,7 @@ public class AggregationServiceComponentTest {
     }
 
     @Test
-    public void aggregationEndpointShouldAcceptTracks() {
+    void aggregationEndpointShouldAcceptTracks() {
         setMockOnlyWhenEnabled(this::mockTracksCall);
 
 
@@ -92,7 +91,7 @@ public class AggregationServiceComponentTest {
     }
 
     @Test
-    public void aggregationEndpointShouldAcceptTracksOfSame() {
+    void aggregationEndpointShouldAcceptTracksOfSame() {
         setMockOnlyWhenEnabled(this::mockTrackCallSame);
 
         given()
@@ -105,7 +104,7 @@ public class AggregationServiceComponentTest {
 
 
     @Test
-    public void aggregationEndpointShouldAcceptTracksFromMultipleRequests() {
+    void aggregationEndpointShouldAcceptTracksFromMultipleRequests() {
 
         setMockOnlyWhenEnabled(this::mockTracksCall);
 
@@ -139,7 +138,7 @@ public class AggregationServiceComponentTest {
     }
 
     @Test
-    public void aggregationEndpointShouldAcceptPricing() {
+    void aggregationEndpointShouldAcceptPricing() {
         setMockOnlyWhenEnabled(this::mockPricingCall);
 
         given()
@@ -151,7 +150,7 @@ public class AggregationServiceComponentTest {
     }
 
     @Test
-    public void aggregationEndpointShouldAcceptPricings() {
+    void aggregationEndpointShouldAcceptPricings() {
         setMockOnlyWhenEnabled(this::mockPrincingsCall);
 
         given()
@@ -167,7 +166,7 @@ public class AggregationServiceComponentTest {
     }
 
     @Test
-    public void aggregationEndpointShouldAcceptShipment() {
+    void aggregationEndpointShouldAcceptShipment() {
 
         setMockOnlyWhenEnabled(this::mockShipmentCall);
 
@@ -180,7 +179,7 @@ public class AggregationServiceComponentTest {
     }
 
     @Test
-    public void aggregationEndpointShouldAcceptShipments() {
+    void aggregationEndpointShouldAcceptShipments() {
         setMockOnlyWhenEnabled(this::mockShipmentsCall);
 
 
@@ -197,7 +196,7 @@ public class AggregationServiceComponentTest {
     }
 
     @Test
-    public void aggregationEndpointShouldAcceptShipmentsTracksPrices() {
+    void aggregationEndpointShouldAcceptShipmentsTracksPrices() {
         setMockOnlyWhenEnabled(this::mockPrincingsCall);
         setMockOnlyWhenEnabled(this::mockShipmentsCall);
         setMockOnlyWhenEnabled(this::mockTracksCall);
@@ -211,7 +210,7 @@ public class AggregationServiceComponentTest {
 
 
     @Test
-    public void aggregationEndpointShouldReturnSameRequestWithSameResponse() {
+    void aggregationEndpointShouldReturnSameRequestWithSameResponse() {
         setMockOnlyWhenEnabled(this::mockTracksCallWithSameItems);
 
         Future<Executable> resultCall1 = CompletableFuture.runAsync(() -> {
@@ -246,7 +245,7 @@ public class AggregationServiceComponentTest {
     }
 
     @Test
-    public void aggregationEndpointShouldReturnSameRequestWithSameResponseUneven() {
+    void aggregationEndpointShouldReturnSameRequestWithSameResponseUneven() {
         setMockOnlyWhenEnabled(this::mockTracksCallWithSameItemsUneven);
 
         Future<Executable> resultCall1 = CompletableFuture.runAsync(() -> {
@@ -280,8 +279,7 @@ public class AggregationServiceComponentTest {
         });
     }
 
-
-    public void waitUntilDone(Future<Executable>... toWaitFor) throws InterruptedException {
+    void waitUntilDone(Future<Executable>... toWaitFor) throws InterruptedException {
         while (!Arrays.stream(toWaitFor).allMatch(Future::isDone)) {
             Thread.sleep(100);
         }

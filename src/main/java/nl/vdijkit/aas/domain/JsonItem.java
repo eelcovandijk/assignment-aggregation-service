@@ -7,9 +7,9 @@ import java.util.function.Function;
 
 public class JsonItem {
     private static final Map<ItemType, Function<ReactiveItem, JsonObject>> MAPPERS = Map.of(
-            ItemType.TRACK, (item) -> new JsonObject().put(item.getItem(), item.getStatus()),
-            ItemType.SHIPMENTS, (item) -> new JsonObject().put(item.getItem(), item.getProducts()),
-            ItemType.PRICING, (item) -> new JsonObject().put(item.getItem(), item.getAmount())
+            ItemType.TRACK, item -> new JsonObject().put(item.getItem(), item.getStatus()),
+            ItemType.SHIPMENTS, item -> new JsonObject().put(item.getItem(), item.getProducts()),
+            ItemType.PRICING, item -> new JsonObject().put(item.getItem(), item.getAmount())
     );
     private final ItemType itemType;
     private final JsonObject jsonObject;

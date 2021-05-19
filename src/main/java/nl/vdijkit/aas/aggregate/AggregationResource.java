@@ -40,7 +40,7 @@ public class AggregationResource {
                                      @QueryParam("track") String trackItems,
                                      @QueryParam("shipments") String shipmentItems) {
 
-        Request request = new Request(convertToList(pricingItems), convertToList(trackItems), convertToList(shipmentItems));
+        var request = new Request(convertToList(pricingItems), convertToList(trackItems), convertToList(shipmentItems));
         LOGGER.infof("Received aggregation request: '%s'", request);
 
         return reactiveDispatcher.process(request).toMulti()
