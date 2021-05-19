@@ -3,7 +3,6 @@ package nl.vdijkit.aas.aggregate;
 import io.smallrye.mutiny.Multi;
 import io.smallrye.mutiny.Uni;
 import io.vertx.core.json.JsonObject;
-import nl.vdijkit.aas.domain.ItemCompleted;
 import nl.vdijkit.aas.domain.JsonItem;
 import org.apache.commons.lang3.StringUtils;
 import org.jboss.logging.Logger;
@@ -46,7 +45,6 @@ public class AggregationResource {
 
         return reactiveDispatcher.process(request).toMulti()
                 .flatMap(completedList -> Multi.createFrom().iterable(completedList))
-                .map(ItemCompleted::getReactiveItem)
                 .map(JsonItem::new)
                 .group().by(JsonItem::getItemType)
                 .flatMap(m -> m)
@@ -59,7 +57,6 @@ public class AggregationResource {
                         jsonObject.put(jsonItem.getItemType().name().toLowerCase(), jsonItem.getJsonObject());
                     }
                 });
-
     }
 
     private List<String> convertToList(String items) {

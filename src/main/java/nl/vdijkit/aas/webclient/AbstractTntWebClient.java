@@ -10,6 +10,7 @@ import io.vertx.mutiny.ext.web.client.HttpResponse;
 import io.vertx.mutiny.ext.web.client.WebClient;
 import nl.vdijkit.aas.domain.*;
 import org.jboss.logging.Logger;
+import org.reactivestreams.Publisher;
 
 import java.time.Duration;
 import java.util.List;
@@ -40,7 +41,7 @@ public abstract class AbstractTntWebClient implements TntWebClient {
     }
 
     @Override
-    public Multi<ItemCompleted> makeRequest(List<ItemInProcess> items) {
+    public Multi<ReactiveItem> makeRequest(List<ItemInProcess> items) {
         LOGGER.infof("%s to be requested: '%s'", getType(), items);
 
         List<String> requestedItems = items.stream().map(ItemInProcess::getItem).collect(Collectors.toList());
@@ -55,18 +56,19 @@ public abstract class AbstractTntWebClient implements TntWebClient {
                     return items.stream().map((item) -> new TimedOutItem(item.getItem(), getType())).collect(Collectors.toList());
                 })
                 .toMulti()
-                .flatMap(reactiveItems -> {
-                    Stream<ItemCompleted> correctAmountOfResponseItems = items.stream()
-                            .map(iip -> {
-                                ReactiveItem reactiveItem = reactiveItems.stream()
-                                        .filter(responseItem -> iip.getItem().equals(responseItem.getItem()))
-                                        .findAny()
-                                        .orElseThrow(() -> new IllegalStateException("No response present for request: " + iip));
-                                return new ItemCompleted(iip.getItemHandler(), reactiveItem);
-                            });
-                    LOGGER.infof("Return responses for: %s ", correctAmountOfResponseItems);
-                    return Multi.createFrom().items(correctAmountOfResponseItems);
-                });
+                .flatMap(mapToCorrectReponseItemsInCaseOfDupplicateItemsInRequest(items));
+    }
+
+    private Function<List<ReactiveItem>, Publisher<? extends ReactiveItem>> mapToCorrectReponseItemsInCaseOfDupplicateItemsInRequest(List<ItemInProcess> requestItems) {
+        return reactiveItems -> {
+            Stream<ReactiveItem> correctAmountOfResponseItems = requestItems.stream()
+                    .map(iip -> reactiveItems.stream()
+                            .filter(responseItem -> iip.getItem().equals(responseItem.getItem()))
+                            .findAny()
+                            .orElseThrow(() -> new IllegalStateException("No response present for request: " + iip)));
+            LOGGER.infof("Return responses for: %s ", correctAmountOfResponseItems);
+            return Multi.createFrom().items(correctAmountOfResponseItems);
+        };
     }
 
     private Function<HttpResponse<Buffer>, List<ReactiveItem>> mapResponse(List<String> requestedItems) {

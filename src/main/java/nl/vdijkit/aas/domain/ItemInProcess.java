@@ -1,24 +1,16 @@
 package nl.vdijkit.aas.domain;
 
-import nl.vdijkit.aas.aggregate.ItemHandler;
-
 import java.util.UUID;
 
 public class ItemInProcess {
-    private final ItemHandler itemHandler;
     private final ItemType type;
     private final String item;
     private final String id;
 
-    public ItemInProcess(ItemHandler itemHandler, ItemType type, String item) {
-        this.itemHandler = itemHandler;
+    public ItemInProcess(ItemType type, String item) {
         this.type = type;
         this.item = item;
         this.id = UUID.randomUUID().toString();
-    }
-
-    public ItemHandler getItemHandler() {
-        return itemHandler;
     }
 
     public ItemType getType() {

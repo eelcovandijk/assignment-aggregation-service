@@ -5,9 +5,9 @@ import io.smallrye.mutiny.Uni;
 import io.smallrye.mutiny.infrastructure.Infrastructure;
 import io.smallrye.mutiny.operators.multi.processors.BroadcastProcessor;
 import io.smallrye.mutiny.tuples.Tuple2;
-import nl.vdijkit.aas.domain.ItemCompleted;
 import nl.vdijkit.aas.domain.ItemInProcess;
 import nl.vdijkit.aas.domain.ItemType;
+import nl.vdijkit.aas.domain.ReactiveItem;
 import nl.vdijkit.aas.webclient.TntWebClient;
 import org.jboss.logging.Logger;
 
@@ -18,8 +18,6 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -31,9 +29,19 @@ import static nl.vdijkit.aas.domain.ItemType.*;
 @ApplicationScoped
 public class ReactiveDispatcher {
     private static final Logger LOGGER = Logger.getLogger(ReactiveDispatcher.class);
+    private static final Function<Request, List<ItemInProcess>> MAP_REQUEST_TO_ITEMS = (req) -> {
+
+        Stream<ItemInProcess> shipmentItems = req.getShipmentItems().stream().map(item -> new ItemInProcess(SHIPMENTS, item));
+        Stream<ItemInProcess> trackItems = req.getTrackItems().stream().map(item -> new ItemInProcess(ItemType.TRACK, item));
+        Stream<ItemInProcess> pricingItems = req.getPricingItems().stream().map(item -> new ItemInProcess(ItemType.PRICING, item));
+
+        return Stream.of(shipmentItems, trackItems, pricingItems).flatMap(items -> items).collect(Collectors.toList());
+    };
 
     private final Map<ItemType, TntWebClient> webClients;
     private final BroadcastProcessor<RequestHandler> processor = BroadcastProcessor.create();
+    private final BroadcastProcessor<ReactiveItem> handler = BroadcastProcessor.create();
+
 
     @Inject
     public ReactiveDispatcher(Instance<TntWebClient> webClientInstances) {
@@ -41,7 +49,7 @@ public class ReactiveDispatcher {
         registerProcessing();
     }
 
-    public Uni<List<ItemCompleted>> process(Request request) {
+    public Uni<List<ReactiveItem>> process(Request request) {
         RequestHandler requestHandler = new RequestHandler(request);
         processor.onNext(requestHandler);
         return requestHandler.registerResponseConsumer();
@@ -66,16 +74,11 @@ public class ReactiveDispatcher {
                 })
                 .emitOn(Infrastructure.getDefaultWorkerPool())
                 .subscribe()
-                .with((ItemCompleted item) -> {
-                    item.getItemHandler().handle(item);
-                    LOGGER.infof("received: %s", item);
-                }, (error) -> {
-                    LOGGER.errorf("blug: %s", error, error);
-                });
+                .withSubscriber(handler);
     }
 
     private Multi<Tuple2<ItemType, List<ItemInProcess>>> groupOf5ForType(Multi<RequestHandler> requestHandler, ItemType type) {
-        return requestHandler.flatMap(handler -> handler.itemsInProcess)
+        return requestHandler.flatMap(handler -> Multi.createFrom().iterable(handler.itemsInProcess))
                 .filter(itemInProcess -> type.equals(itemInProcess.getType()))
                 .group()
                 .intoLists()
@@ -83,24 +86,14 @@ public class ReactiveDispatcher {
                 .map(items -> Tuple2.of(type, items));
     }
 
-    public static class RequestHandler implements ItemHandler {
+    public class RequestHandler {
 
-        private final Multi<ItemInProcess> itemsInProcess;
-        private final Queue<ItemCompleted> queue = new ConcurrentLinkedDeque<>();
-        private int total;
+        private final List<ItemInProcess> itemsInProcess;
+        private long total;
         private final AtomicInteger counter = new AtomicInteger();
-        private final Function<Request, List<ItemInProcess>> mapReqToItems = (req) -> {
 
-            Stream<ItemInProcess> shipmentItems = req.getShipmentItems().stream().map(item -> new ItemInProcess(this, SHIPMENTS, item));
-            Stream<ItemInProcess> trackItems = req.getTrackItems().stream().map(item -> new ItemInProcess(this, ItemType.TRACK, item));
-            Stream<ItemInProcess> pricingItems = req.getPricingItems().stream().map(item -> new ItemInProcess(this, ItemType.PRICING, item));
 
-            List<ItemInProcess> itemInProcessList = Stream.of(shipmentItems, trackItems, pricingItems).flatMap(items -> items).collect(Collectors.toList());
-            total = itemInProcessList.size();
-            return itemInProcessList;
-        };
-
-        private final Predicate<ItemCompleted> isResponseComplete = (itemCompleted -> {
+        private final Predicate<ReactiveItem> isResponseComplete = (item -> {
             LOGGER.infof("is complete: %s < %s", counter.get(), total);
             return counter.get() < total;
         });
@@ -108,38 +101,17 @@ public class ReactiveDispatcher {
         public RequestHandler(Request request) {
             LOGGER.infof("Create RequestHandler: %s", request);
 
-            itemsInProcess = Multi.createFrom()
-                    .item(request)
-                    .map(mapReqToItems)
-                    .flatMap(items -> Multi.createFrom().iterable(items));
-
+            itemsInProcess = MAP_REQUEST_TO_ITEMS.apply(request);
+            total = itemsInProcess.size();
         }
 
-        public Uni<List<ItemCompleted>> registerResponseConsumer() {
-            return Multi.createBy()
-                    .repeating()
-                    .supplier(this::get)
-                    .whilst(isResponseComplete)
+        public Uni<List<ReactiveItem>> registerResponseConsumer() {
+            return handler.onItem().transform(i -> i)
+                    .filter(item -> itemsInProcess.stream().anyMatch(iip -> iip.getItem().equals(item.getItem())))
+                    .onItem().invoke(counter::incrementAndGet)
+                    .toUni().repeat().whilst(isResponseComplete)
                     .runSubscriptionOn(Infrastructure.getDefaultExecutor())
                     .collect().asList();
         }
-
-        public void handle(ItemCompleted completed) {
-            if (itemsInProcess.subscribe().asStream().anyMatch(iip -> iip.getItem().equals(completed.getReactiveItem().getItem()))) {
-                queue.offer(completed);
-                LOGGER.infof("handle completed item: %s", completed);
-            }
-        }
-
-        public ItemCompleted get() {
-            ItemCompleted completed = queue.poll();
-            if (completed != null) {
-                LOGGER.infof("poll %s: %s", counter.get(), completed);
-                counter.incrementAndGet();
-            }
-            return completed;
-        }
     }
-
-
 }
