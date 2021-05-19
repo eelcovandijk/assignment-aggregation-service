@@ -1,4 +1,4 @@
-package nl.vdijkit.aas.pricing;
+package nl.vdijkit.aas.webclient.pricing;
 
 import io.vertx.core.json.JsonObject;
 import nl.vdijkit.aas.domain.ReactiveItem;

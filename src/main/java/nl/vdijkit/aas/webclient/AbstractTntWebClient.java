@@ -8,7 +8,6 @@ import io.vertx.mutiny.core.Vertx;
 import io.vertx.mutiny.core.buffer.Buffer;
 import io.vertx.mutiny.ext.web.client.HttpResponse;
 import io.vertx.mutiny.ext.web.client.WebClient;
-import nl.vdijkit.aas.aggregate.ItemHandler;
 import nl.vdijkit.aas.domain.*;
 import org.jboss.logging.Logger;
 
@@ -16,6 +15,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public abstract class AbstractTntWebClient implements TntWebClient {
     private static final Logger LOGGER = Logger.getLogger(AbstractTntWebClient.class);
@@ -54,23 +54,26 @@ public abstract class AbstractTntWebClient implements TntWebClient {
                     LOGGER.errorf("Failed to request %s for items: '%s' with resource: %s", this.getType(), items, this.path);
                     return items.stream().map((item) -> new TimedOutItem(item.getItem(), getType())).collect(Collectors.toList());
                 })
-
                 .toMulti()
-                .flatMap(responseItems -> Multi.createFrom().iterable(responseItems))
-                .map(responseItem -> {
-                    ItemHandler itemHandler = items.stream()
-                            .filter(inprogress -> inprogress.getItem().equals(responseItem.getItem()))
-                            .findFirst()
-                            .orElseThrow(() -> new IllegalStateException("No handler found for response: " + responseItem))
-                            .getItemHandler();
-                    return new ItemCompleted(itemHandler, responseItem);
+                .flatMap(reactiveItems -> {
+                    Stream<ItemCompleted> correctAmountOfResponseItems = items.stream()
+                            .map(iip -> {
+                                ReactiveItem reactiveItem = reactiveItems.stream()
+                                        .filter(responseItem -> iip.getItem().equals(responseItem.getItem()))
+                                        .findAny()
+                                        .orElseThrow(() -> new IllegalStateException("No response present for request: " + iip));
+                                return new ItemCompleted(iip.getItemHandler(), reactiveItem);
+                            });
+                    LOGGER.infof("Return responses for: %s ", correctAmountOfResponseItems);
+                    return Multi.createFrom().items(correctAmountOfResponseItems);
                 });
     }
 
     private Function<HttpResponse<Buffer>, List<ReactiveItem>> mapResponse(List<String> requestedItems) {
         return bufferHttpResponse -> {
             if (bufferHttpResponse.statusCode() == 200) {
-               return mapResponseObject(bufferHttpResponse, requestedItems);
+
+                return mapResponseObject(bufferHttpResponse, requestedItems);
             }
             LOGGER.warnf("Received invalid response status while requesting %s for items: '%s' with path: %s. Response: %s", this.getType(), requestedItems, this.path, bufferHttpResponse.toString());
             return requestedItems.stream().map((item) -> new UnavailableItem(item, getType())).collect(Collectors.toList());

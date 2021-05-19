@@ -1,4 +1,4 @@
-package nl.vdijkit.aas.shipment;
+package nl.vdijkit.aas.webclient.shipment;
 
 import io.vertx.mutiny.core.Vertx;
 import nl.vdijkit.aas.domain.ItemType;

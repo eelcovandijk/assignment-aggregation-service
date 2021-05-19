@@ -1,8 +1,9 @@
-package nl.vdijkit.aas.pricing;
+package nl.vdijkit.aas.webclient.pricing;
 
 import io.vertx.core.json.JsonObject;
 import nl.vdijkit.aas.domain.ItemType;
 import nl.vdijkit.aas.domain.ReactiveItem;
+import nl.vdijkit.aas.webclient.pricing.PricingMapper;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

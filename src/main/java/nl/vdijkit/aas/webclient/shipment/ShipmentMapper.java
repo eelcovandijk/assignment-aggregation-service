@@ -1,4 +1,4 @@
-package nl.vdijkit.aas.shipment;
+package nl.vdijkit.aas.webclient.shipment;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;

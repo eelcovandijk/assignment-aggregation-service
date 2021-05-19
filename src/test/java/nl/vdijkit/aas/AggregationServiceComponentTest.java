@@ -2,6 +2,7 @@ package nl.vdijkit.aas;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
+import com.github.tomakehurst.wiremock.matching.ContainsPattern;
 import com.github.tomakehurst.wiremock.matching.EqualToPattern;
 import com.github.tomakehurst.wiremock.matching.StringValuePattern;
 import io.quarkus.test.junit.QuarkusTest;
@@ -91,6 +92,19 @@ public class AggregationServiceComponentTest {
     }
 
     @Test
+    public void aggregationEndpointShouldAcceptTracksOfSame() {
+        setMockOnlyWhenEnabled(this::mockTrackCallSame);
+
+        given()
+                .when().get("/aggregation?track=231,231")
+                .then()
+                .log().all()
+                .statusCode(200)
+                .body("track.231", IsIn.in(EXPECTED_TRACK_STATUSSES));
+    }
+
+
+    @Test
     public void aggregationEndpointShouldAcceptTracksFromMultipleRequests() {
 
         setMockOnlyWhenEnabled(this::mockTracksCall);
@@ -106,6 +120,7 @@ public class AggregationServiceComponentTest {
                             "track.233", IsIn.in(EXPECTED_TRACK_STATUSSES)).and();
 
         }).handle(EXECUTABLE_BI_FUNCTION);
+
         Future<Executable> resultCall2 = CompletableFuture.runAsync(() -> {
             given()
                     .when().get("/aggregation?track=234,235")
@@ -195,10 +210,44 @@ public class AggregationServiceComponentTest {
     }
 
 
-    @Disabled
     @Test
     public void aggregationEndpointShouldReturnSameRequestWithSameResponse() {
         setMockOnlyWhenEnabled(this::mockTracksCallWithSameItems);
+
+        Future<Executable> resultCall1 = CompletableFuture.runAsync(() -> {
+            given()
+                    .when().get("/aggregation?track=231,232,233,234,235")
+                    .then()
+                    .log().all()
+                    .statusCode(200)
+                    .body("track.231", IsIn.in(EXPECTED_TRACK_STATUSSES),
+                            "track.232", IsIn.in(EXPECTED_TRACK_STATUSSES),
+                            "track.233", IsIn.in(EXPECTED_TRACK_STATUSSES));
+
+        }).handle(EXECUTABLE_BI_FUNCTION);
+
+        Future<Executable> resultCall2 = CompletableFuture.runAsync(() -> {
+            given()
+                    .when().get("/aggregation?track=231,232,233,234,235")
+                    .then()
+                    .log().all()
+                    .statusCode(200)
+                    .body("track.231", IsIn.in(EXPECTED_TRACK_STATUSSES),
+                            "track.232", IsIn.in(EXPECTED_TRACK_STATUSSES),
+                            "track.233", IsIn.in(EXPECTED_TRACK_STATUSSES));
+        }).handle(EXECUTABLE_BI_FUNCTION);
+
+
+        Assertions.assertTimeoutPreemptively(Duration.ofMillis(21000), () -> {
+            waitUntilDone(resultCall1, resultCall2);
+            Assertions.assertDoesNotThrow(resultCall1.get());
+            Assertions.assertDoesNotThrow(resultCall2.get());
+        });
+    }
+
+    @Test
+    public void aggregationEndpointShouldReturnSameRequestWithSameResponseUneven() {
+        setMockOnlyWhenEnabled(this::mockTracksCallWithSameItemsUneven);
 
         Future<Executable> resultCall1 = CompletableFuture.runAsync(() -> {
             given()
@@ -224,12 +273,13 @@ public class AggregationServiceComponentTest {
         }).handle(EXECUTABLE_BI_FUNCTION);
 
 
-        Assertions.assertTimeoutPreemptively(Duration.ofMillis(11000), () -> {
+        Assertions.assertTimeoutPreemptively(Duration.ofMillis(21000), () -> {
             waitUntilDone(resultCall1, resultCall2);
             Assertions.assertDoesNotThrow(resultCall1.get());
             Assertions.assertDoesNotThrow(resultCall2.get());
         });
     }
+
 
     public void waitUntilDone(Future<Executable>... toWaitFor) throws InterruptedException {
         while (!Arrays.stream(toWaitFor).allMatch(Future::isDone)) {
@@ -244,6 +294,12 @@ public class AggregationServiceComponentTest {
     }
 
     private void mockTrackCall() {
+        WireMock.stubFor(WireMock.get(urlPathEqualTo("/track")).willReturn(WireMock.aResponse()
+                .withBody(
+                        "{\"231\":\"NEW\"}")));
+    }
+
+    private void mockTrackCallSame() {
         WireMock.stubFor(WireMock.get(urlPathEqualTo("/track")).willReturn(WireMock.aResponse()
                 .withBody(
                         "{\"231\":\"NEW\"}")));
@@ -282,27 +338,41 @@ public class AggregationServiceComponentTest {
     }
 
     private void mockTracksCall() {
-        WireMock.stubFor(WireMock.get(urlPathEqualTo("/track")).willReturn(WireMock.aResponse()
+        WireMock.stubFor(WireMock.get(urlPathEqualTo("/track")).withQueryParam("q", new ContainsPattern("231,")).willReturn(WireMock.aResponse()
                 .withBody(
                         "{\"231\":\"NEW\"," +
                                 "\"232\":\"COLLECTED\"," +
                                 "\"233\":\"IN TRANSIT\"," +
                                 "\"234\":\"DELIVERING\"," +
                                 "\"235\":\"DELIVERED\"}")));
+
+        WireMock.stubFor(WireMock.get(urlPathEqualTo("/track")).withQueryParam("q", new ContainsPattern("236,")).willReturn(WireMock.aResponse()
+                .withBody(
+                        "{\"236\":\"NEW\"," +
+                                "\"237\":\"COLLECTED\"}")));
     }
 
     private void mockTracksCallWithSameItems() {
-        WireMock.stubFor(WireMock.get(urlPathEqualTo("/track")).withQueryParam("q", new EqualToPattern("231,231,232,233,232")).willReturn(WireMock.aResponse()
+        WireMock.stubFor(WireMock.get(urlPathEqualTo("/track")).withQueryParam("q", new ContainsPattern("231,")).willReturn(WireMock.aResponse()
                 .withBody(
                         "{\"231\":\"NEW\"," +
                                 "\"232\":\"COLLECTED\"," +
                                 "\"233\":\"IN TRANSIT\"," +
-                                "\"231\":\"NEW\"," +
-                                "\"232\":\"COLLECTED\"}")));
+                                "\"234\":\"NEW\"," +
+                                "\"235\":\"COLLECTED\"}")));
+
+    }
+
+    private void mockTracksCallWithSameItemsUneven() {
+        WireMock.stubFor(WireMock.get(urlPathEqualTo("/track")).withQueryParam("q", new ContainsPattern("231,232,233")).willReturn(WireMock.aResponse()
+                .withBody(
+                        "{\"231\":\"NEW\"," +
+                                "\"232\":\"COLLECTED\"," +
+                                "\"233\":\"IN TRANSIT\"}")));
 
         WireMock.stubFor(WireMock.get(urlPathEqualTo("/track")).withQueryParam("q", new EqualToPattern("233")).willReturn(WireMock.aResponse()
                 .withBody(
-                        "{\"233\":\"IN TRANSIT\"}")));
+                        "{\"233\":\"NEW\"}")));
 
     }
 

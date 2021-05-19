@@ -1,60 +1,62 @@
-package nl.vdijkit.aas.shipment;
+package nl.vdijkit.aas.webclient.track;
 
 import io.vertx.core.json.JsonObject;
 import nl.vdijkit.aas.domain.ItemType;
 import nl.vdijkit.aas.domain.ReactiveItem;
+import nl.vdijkit.aas.webclient.track.TrackMapper;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class ShipmentMapperTest {
-    private final ShipmentMapper shipmentMapper = new ShipmentMapper();
+class TrackMapperTest {
+    private final TrackMapper trackMapper = new TrackMapper();
 
     @Test
     void nullResponseShouldReturnEmptyList() {
-        List<ReactiveItem> mappedResponse = shipmentMapper.mapResponse(null);
+        List<ReactiveItem> mappedResponse = trackMapper.mapResponse(null);
         assertNotNull(mappedResponse);
         assertTrue(mappedResponse.isEmpty());
     }
 
     @Test
     void emptyResponseShouldReturnEmptyList() {
-        List<ReactiveItem> mappedResponse = shipmentMapper.mapResponse(new JsonObject());
+        List<ReactiveItem> mappedResponse = trackMapper.mapResponse(new JsonObject());
         assertNotNull(mappedResponse);
         assertTrue(mappedResponse.isEmpty());
     }
 
     @Test
-    void responseWithNullShipmentShouldReturnListWithShipmentNull() {
+    void responseWithNullTrackShouldReturnListWithTrackNull() {
         JsonObject pricingResponse = new JsonObject();
         pricingResponse.putNull("1");
 
-        List<ReactiveItem> mappedResponse = shipmentMapper.mapResponse(pricingResponse);
+        List<ReactiveItem> mappedResponse = trackMapper.mapResponse(pricingResponse);
 
         assertAll(() -> {
             assertEquals(1, mappedResponse.size());
             ReactiveItem item = mappedResponse.get(0);
-            assertEquals(ItemType.SHIPMENTS, item.getType());
             assertEquals("1", item.getItem());
-            assertNull(item.getProducts());
+            assertEquals(ItemType.TRACK, item.getType());
+            assertNull(item.getStatus());
         });
     }
 
     @Test
-    void responseWithInvalidShipmentShouldReturnListWithNullValue() {
+    void responseWithProcessedTrackShouldReturnListWithTrackAsProcessed() {
         JsonObject pricingResponse = new JsonObject();
-        pricingResponse.put("5", "...");
+        pricingResponse.put("1", "PROCESSED");
 
-        List<ReactiveItem> mappedResponse = shipmentMapper.mapResponse(pricingResponse);
+        List<ReactiveItem> mappedResponse = trackMapper.mapResponse(pricingResponse);
 
         assertAll(() -> {
             assertEquals(1, mappedResponse.size());
             ReactiveItem item = mappedResponse.get(0);
-            assertEquals(ItemType.SHIPMENTS, item.getType());
-            assertEquals("5", item.getItem());
-            assertNull(item.getProducts());
+            assertEquals(ItemType.TRACK, item.getType());
+            assertEquals("1", item.getItem());
+            assertEquals("PROCESSED", item.getStatus());
         });
     }
+
 }

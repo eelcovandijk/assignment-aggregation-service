@@ -66,6 +66,7 @@ public class AggregationResource {
         if (null != items) {
             return splitItems(items).stream()
                     .filter(StringUtils::isNotBlank)
+                    .map(String::trim)
                     .collect(Collectors.toList());
         }
         return Collections.emptyList();
